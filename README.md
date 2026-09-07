@@ -1,29 +1,37 @@
 # Painter Landing Page
 
-A single-file, self-editable landing page for a painter to share via a QR code at galleries — built as a "link in bio" style page: her name, a photo, recent paintings, and social links, with no pricing or checkout.
+A self-editable landing page for a painter to share via a QR code at galleries — built as a "link in bio" style page: her name, a photo, recent paintings, and social links, with no pricing or checkout.
 
 ## How it works
 
-Everything lives in `index.html` — no build step, no dependencies. The page:
+- `index.html` — the static page. Loads `data.json` on page load and renders from it. No build step, no framework.
+- `data.json` — everything the artist can edit: name, tagline, photo, paintings, social links, text colors, background toggle, and a SHA-256 password hash (never the plaintext password).
+- `api/save.js` — a Vercel serverless function. When the artist hits "Save changes" in edit mode, the page sends the updated data here. The function checks the password hash against what's currently stored, then writes the new `data.json` straight to this GitHub repo using a token. Pushing to `main` triggers Vercel to redeploy automatically, so the change goes live for everyone within about a minute.
 
-- Renders a **Studio Scroll** style layout: name, tagline, and social buttons up top next to a featured photo, then a horizontally-scrolling gallery of paintings below.
-- Uses the featured photo (blurred and softened) as the page background by default, with an option to turn that off.
-- Lets the artist pick from a curated palette of colors for her name, tagline, and painting captions.
-- Gives Instagram and Facebook links their real brand colors automatically, based on the link's label.
-- Includes a password-protected **edit mode** (small lock icon, bottom-right) where she can add/reorder/remove paintings, change her photo, update links, change text colors, and change her password — all without touching code.
+Edit mode itself (the lock icon, adding/reordering paintings, changing colors, etc.) works entirely client-side and needs no server — only the final "Save changes" step talks to `/api/save`.
 
-### Saving changes
+## Deploying this (one-time setup)
 
-The page is designed to run as a published [Claude Artifact](https://claude.ai) with the `artifact` capability enabled. When she hits "Save changes" in edit mode, the page calls `claude.artifact.publish()` to rebuild and republish itself as a new version — the whole document (styles, logic, and her data) is regenerated from the in-page state and pushed live. This only works when the page is opened as a live Claude Artifact; opening the raw HTML file elsewhere shows a "saving isn't available here" message and the page falls back to being view-only.
-
-### Data model
-
-Everything the artist can edit is stored as one JSON object embedded in a `<script id="site-data" type="application/json">` tag: name, tagline, photo, paintings (image + caption), social links, text colors, background toggle, and a SHA-256 password hash (never the plaintext password).
+1. **Create a GitHub token** the save function can use to write to this repo:
+   - GitHub → Settings → Developer settings → Personal access tokens → Fine-grained tokens → Generate new token
+   - Repository access: only this repository
+   - Permissions: Contents → Read and write
+   - Copy the generated token — you won't see it again.
+2. **Import this repo into Vercel**: vercel.com → Add New → Project → import `painter-landing-page` from GitHub → Deploy. No build settings needed.
+3. **Add environment variables** in the Vercel project (Settings → Environment Variables):
+   - `GITHUB_TOKEN` — the token from step 1
+   - `GITHUB_REPO` — `owner/repo-name` (e.g. `samrobrts100k/artworkbylinda`)
+   - `GITHUB_BRANCH` — `main` (optional, defaults to `main`)
+   Redeploy after adding these so the function picks them up.
 
 ## Default password
 
-The seed data ships with the password `openstudio` — change it immediately from edit mode (there's a "Change password" control) once the page is live for a real user.
+The seed data ships with the password `openstudio` — change it immediately from edit mode (there's a "Change password" control) once real content is in place.
+
+## Privacy note
+
+Once real photos and content are saved, they live in `data.json` in this GitHub repo. If the repo is public, that content is publicly visible in the repo's history too — consider making the repo private (Vercel can still deploy from a private repo).
 
 ## Local development
 
-Just open `index.html` in a browser. Editing works locally too (the password gate and all UI function without the Artifact capability); only the final "Save changes" step requires being hosted as a live Claude Artifact.
+Serve the folder with any static file server (opening `index.html` directly via `file://` won't work, since it needs to `fetch()` `data.json`). The "Save changes" button needs `/api/save` to be running, which requires Vercel's dev server (`vercel dev`) or a deployed environment with the environment variables set.

@@ -9,10 +9,7 @@
 </head>
 <body>
 <div id="app"></div>
-<script id="site-data" type="application/json">{"name":"Your Name","tagline":"A line about your work","photo":null,"paintings":[],"links":[{"id":"l1","label":"Instagram","url":""},{"id":"l2","label":"Email","url":""}],"passwordHash":"ab7632d5808dc2414c9a237b0238ea688c3f834198b0126373cb1712dd73611c","blurBg":true}</script>
 <script>
-var APP_SOURCE = document.currentScript.textContent;
-
 var CSS_TEXT = `
 :root{
   --bg:#F2E9E4;
@@ -110,11 +107,14 @@ body{
 .modal input{ width:100%; margin-bottom:8px; }
 .modal-actions{ display:flex; justify-content:flex-end; gap:8px; margin-top:12px; }
 .field-error{ color:var(--danger); font-size:0.82rem; margin:4px 0 0; }
+.toast{ position:fixed; left:16px; right:16px; bottom:16px; max-width:420px; margin:0 auto; background:var(--ink); color:var(--surface); padding:13px 42px 13px 16px; border-radius:10px; font-size:0.88rem; line-height:1.45; box-shadow:var(--shadow); z-index:30; }
+.toast-close{ position:absolute; top:8px; right:10px; background:none; color:var(--surface); opacity:0.7; font-size:1.1rem; line-height:1; padding:4px; }
+.toast-close:hover{ opacity:1; }
 input[type="text"], input[type="password"], textarea{ font-family:inherit; font-size:0.95rem; padding:11px 13px; border-radius:8px; border:1px solid var(--line); background:var(--bg); color:var(--ink); width:100%; }
 input:focus-visible, textarea:focus-visible, button:focus-visible{ outline:2px solid var(--accent2); outline-offset:1px; }
 button{ font-family:inherit; cursor:pointer; border:none; background:none; color:inherit; }
-.editing{ padding-bottom:40px; }
-.edit-bar{ position:sticky; top:0; z-index:10; display:flex; align-items:center; justify-content:space-between; background:var(--bg); padding:12px 0; margin-bottom:24px; border-bottom:1px solid var(--line); }
+.editing{ padding-top:68px; padding-bottom:40px; }
+.edit-bar{ position:fixed; top:0; left:0; right:0; z-index:15; display:flex; align-items:center; justify-content:space-between; background:var(--bg); padding:12px clamp(18px,5vw,28px); border-bottom:1px solid var(--line); box-shadow:var(--shadow); }
 .edit-label{ font-size:0.72rem; letter-spacing:0.12em; text-transform:uppercase; color:var(--ink-faint); font-weight:600; }
 .edit-bar-actions{ display:flex; gap:8px; }
 .primary{ background:var(--accent); color:var(--on-accent); padding:10px 18px; border-radius:999px; font-weight:600; font-size:0.88rem; }
@@ -154,6 +154,7 @@ button{ font-family:inherit; cursor:pointer; border:none; background:none; color
 .edit-link button.danger{ width:32px; height:32px; border-radius:6px; background:var(--surface); border:1px solid var(--line); color:var(--danger); font-size:1rem; }
 .password-panel{ margin-top:12px; display:flex; flex-direction:column; gap:8px; max-width:280px; }
 .password-panel button{ background:var(--surface); border:1px solid var(--line); padding:9px 14px; border-radius:8px; font-size:0.85rem; align-self:flex-start; }
+.load-state{ max-width:600px; margin:0 auto; padding:80px 24px; text-align:center; color:var(--ink-faint); font-family:'Fraunces',serif; font-style:italic; }
 @media (max-width:420px){ .edit-piece{ grid-template-columns:64px 1fr auto; } .edit-piece img{ width:64px; height:64px; } }
 @media (prefers-reduced-motion: reduce){ .cta{ transition:none; } }
 `;
@@ -236,24 +237,6 @@ function resizeImage(file, maxDim, quality, cb){
   reader.readAsDataURL(file);
 }
 
-function headFor(site){
-  var title = (site.name && site.name !== 'Your Name') ? site.name + ' — Paintings' : 'Painter Landing Page';
-  return '<!doctype html>\n<html lang="en">\n<head>\n' +
-    '<meta charset="utf-8">\n' +
-    '<meta name="viewport" content="width=device-width, initial-scale=1">\n' +
-    '<title>' + esc(title) + '</title>\n' +
-    '<link rel="preconnect" href="https://fonts.googleapis.com">\n' +
-    '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..700;1,9..144,300..700&family=Archivo:wght@400;500;600;700&display=swap">\n' +
-    '</head>\n<body>\n<div id="app"></div>\n<script id="site-data" type="application/json">';
-}
-
-function buildHtml(site){
-  var json = JSON.stringify(site).replace(/</g, '\\u003c');
-  var closeData = '<' + '/script>\n<script>';
-  var closeApp = '<' + '/script>\n</body>\n</html>';
-  return headFor(site) + json + closeData + APP_SOURCE + closeApp;
-}
-
 function injectStyles(){
   var s = document.createElement('style');
   s.textContent = CSS_TEXT;
@@ -273,6 +256,23 @@ function renderLockModal(){
       '</div>' +
     '</div>' +
   '</div>';
+}
+
+function renderConfirmExitModal(){
+  return '<div class="modal-backdrop" id="confirm-exit-backdrop">' +
+    '<div class="modal" role="dialog" aria-modal="true" aria-label="Discard changes">' +
+      '<h2>Discard changes?</h2>' +
+      '<p>You have changes from this session that haven’t been saved yet.</p>' +
+      '<div class="modal-actions">' +
+        '<button class="ghost" data-action="confirm-exit-no">Keep editing</button>' +
+        '<button class="primary" data-action="confirm-exit-yes">Discard</button>' +
+      '</div>' +
+    '</div>' +
+  '</div>';
+}
+
+function renderToast(){
+  return '<div class="toast" role="status">' + esc(toast) + '<button class="toast-close" data-action="dismiss-toast" aria-label="Dismiss">×</button></div>';
 }
 
 function renderPasswordPanel(){
@@ -400,7 +400,15 @@ function render(){
   var bgLayer = (blurBg && src)
     ? ('<div class="bg-blur" style="background-image:url(\'' + src + '\')"></div><div class="bg-wash"></div>')
     : '';
-  app.innerHTML = bgLayer + (editing ? renderEditing() : renderView());
+  app.innerHTML = bgLayer + (editing ? renderEditing() : renderView()) +
+    (confirmExitOpen ? renderConfirmExitModal() : '') +
+    (toast ? renderToast() : '');
+}
+
+function doExitEdit(){
+  SITE = JSON.parse(originalSiteJson);
+  editing = false; unlocked = false; dirty = false; passwordPanelOpen = false; authHash = null;
+  render();
 }
 
 function focusSoon(id){
@@ -412,7 +420,7 @@ function trySubmitLock(){
   if (!input) return;
   sha256Hex(input.value).then(function(hash){
     if (hash === SITE.passwordHash) {
-      lockOpen = false; editing = true; unlocked = true;
+      lockOpen = false; editing = true; unlocked = true; authHash = hash;
       originalSiteJson = JSON.stringify(SITE);
       render();
     } else {
@@ -441,24 +449,25 @@ async function save(){
   var btn = document.getElementById('save-btn');
   if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
   try {
-    var cap = (window.claude && window.claude.use) ? await window.claude.use('artifact') : null;
-    if (!cap) {
-      alert('Saving isn’t available in this view. Open this page from the artifact link it was published to, then try again.');
+    var resp = await fetch('/api/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ authHash: authHash, data: SITE })
+    });
+    if (!resp.ok) {
+      var msg = 'Couldn’t save just now — try again in a moment.';
+      if (resp.status === 403) msg = 'That password is no longer correct — exit and unlock again.';
+      else if (resp.status === 413) msg = 'That’s too much to save at once — try removing a painting or a large photo.';
+      showToast(msg);
       if (btn) { btn.disabled = false; btn.textContent = 'Save changes'; }
       return;
     }
-    var html = buildHtml(SITE);
-    await cap.publish(html);
+    dirty = false;
+    originalSiteJson = JSON.stringify(SITE);
+    showToast('Saved! It may take a minute to go live for other visitors.');
+    if (btn) { btn.disabled = false; btn.textContent = 'Save changes'; }
   } catch (err) {
-    var msg = 'Couldn’t save just now — try again in a moment.';
-    if (err && (err.code === 'not_writer' || err.code === 'not_granted')) {
-      msg = 'This link doesn’t have permission to save changes here.';
-    } else if (err && err.code === 'too_large') {
-      msg = 'That’s too much to save at once — try removing a painting or a large photo.';
-    } else if (err && err.code === 'conflict') {
-      msg = null;
-    }
-    if (msg) alert(msg);
+    showToast('Couldn’t reach the server — check your connection and try again.');
     if (btn) { btn.disabled = false; btn.textContent = 'Save changes'; }
   }
 }
@@ -466,6 +475,8 @@ async function save(){
 function onClick(e){
   var backdrop = document.getElementById('lock-backdrop');
   if (backdrop && e.target === backdrop) { lockOpen = false; render(); return; }
+  var exitBackdrop = document.getElementById('confirm-exit-backdrop');
+  if (exitBackdrop && e.target === exitBackdrop) { confirmExitOpen = false; render(); return; }
 
   var el = e.target.closest('[data-action]');
   if (!el) return;
@@ -475,13 +486,13 @@ function onClick(e){
   if (action === 'open-lock') { lockOpen = true; render(); focusSoon('lock-pass'); }
   else if (action === 'close-lock') { lockOpen = false; render(); }
   else if (action === 'submit-lock') { trySubmitLock(); }
+  else if (action === 'dismiss-toast') { if (toastTimer) clearTimeout(toastTimer); toast = null; render(); }
   else if (action === 'exit-edit') {
-    if (!dirty || confirm('Discard changes made in this session?')) {
-      SITE = JSON.parse(originalSiteJson);
-      editing = false; unlocked = false; dirty = false; passwordPanelOpen = false;
-      render();
-    }
+    if (!dirty) { doExitEdit(); }
+    else { confirmExitOpen = true; render(); }
   }
+  else if (action === 'confirm-exit-yes') { confirmExitOpen = false; doExitEdit(); }
+  else if (action === 'confirm-exit-no') { confirmExitOpen = false; render(); }
   else if (action === 'save') { save(); }
   else if (action === 'add-painting') { document.getElementById('painting-file').click(); }
   else if (action === 'change-photo') { document.getElementById('photo-file').click(); }
@@ -551,12 +562,34 @@ function onChange(e){
 }
 
 var app = document.getElementById('app');
-var SITE = JSON.parse(document.getElementById('site-data').textContent);
+var SITE = null;
 var editing = false, unlocked = false, dirty = false, lockOpen = false, passwordPanelOpen = false;
-var originalSiteJson = JSON.stringify(SITE);
+var toast = null, toastTimer = null, confirmExitOpen = false;
+var authHash = null;
+var originalSiteJson = null;
 
-injectStyles();
-render();
+function showToast(msg){
+  toast = msg;
+  render();
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(function(){ toast = null; render(); }, 5000);
+}
+
+app.innerHTML = '<p class="load-state">Loading…</p>';
+
+fetch('data.json?_=' + Date.now())
+  .then(function(r){ return r.json(); })
+  .then(function(data){
+    SITE = data;
+    originalSiteJson = JSON.stringify(SITE);
+    document.title = (SITE.name ? SITE.name + ' — Paintings' : 'Painter Landing Page');
+    injectStyles();
+    render();
+  })
+  .catch(function(){
+    app.innerHTML = '<p class="load-state">Couldn’t load this page right now. Please try again shortly.</p>';
+  });
+
 app.addEventListener('click', onClick);
 app.addEventListener('input', onInput);
 app.addEventListener('change', onChange);
