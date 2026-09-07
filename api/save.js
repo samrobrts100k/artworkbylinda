@@ -34,13 +34,24 @@ export default async function handler(req, res) {
   };
 
   try {
-    const getResp = await fetch(`${apiBase}?ref=${encodeURIComponent(branch)}`, { headers: ghHeaders });
-    if (!getResp.ok) {
+    // Metadata call: always includes `sha`, regardless of file size.
+    const metaResp = await fetch(`${apiBase}?ref=${encodeURIComponent(branch)}`, { headers: ghHeaders });
+    if (!metaResp.ok) {
       res.status(502).json({ error: 'github_read_failed' });
       return;
     }
-    const getJson = await getResp.json();
-    const currentContent = JSON.parse(Buffer.from(getJson.content, 'base64').toString('utf8'));
+    const meta = await metaResp.json();
+
+    // Content call: files over 1MB come back with an empty `content` field
+    // on the default media type, so fetch the raw bytes instead (works up to 100MB).
+    const rawResp = await fetch(`${apiBase}?ref=${encodeURIComponent(branch)}`, {
+      headers: { ...ghHeaders, Accept: 'application/vnd.github.raw+json' }
+    });
+    if (!rawResp.ok) {
+      res.status(502).json({ error: 'github_read_failed' });
+      return;
+    }
+    const currentContent = JSON.parse(await rawResp.text());
 
     if (currentContent.passwordHash !== authHash) {
       res.status(403).json({ error: 'wrong_password' });
@@ -53,7 +64,7 @@ export default async function handler(req, res) {
       body: JSON.stringify({
         message: 'Update site content',
         content: Buffer.from(newContentStr, 'utf8').toString('base64'),
-        sha: getJson.sha,
+        sha: meta.sha,
         branch
       })
     });
