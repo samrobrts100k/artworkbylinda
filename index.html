@@ -1,0 +1,569 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Painter Landing Page</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..700;1,9..144,300..700&family=Archivo:wght@400;500;600;700&display=swap">
+</head>
+<body>
+<div id="app"></div>
+<script id="site-data" type="application/json">{"name":"Your Name","tagline":"A line about your work","photo":null,"paintings":[],"links":[{"id":"l1","label":"Instagram","url":""},{"id":"l2","label":"Email","url":""}],"passwordHash":"ab7632d5808dc2414c9a237b0238ea688c3f834198b0126373cb1712dd73611c","blurBg":true}</script>
+<script>
+var APP_SOURCE = document.currentScript.textContent;
+
+var CSS_TEXT = `
+:root{
+  --bg:#F2E9E4;
+  --bg-deep:#DAD2BE;
+  --surface:#F2EDE1;
+  --ink:#26221B;
+  --ink-soft:#655A46;
+  --ink-faint:#9A8E76;
+  --line:rgba(38,34,27,0.14);
+  --accent:#C7962E;
+  --accent2:#3E6B57;
+  --on-accent:#241F17;
+  --on-accent2:#F2EDE1;
+  --danger:#B34A3A;
+  --shadow:0 18px 40px -24px rgba(38,34,27,0.35);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#241A1D; --bg-deep:#141110; --surface:#241F18;
+    --ink:#26221B; --ink-soft:#655A46; --ink-faint:#9A8E76;
+    --line:rgba(237,231,217,0.14);
+    --accent:#D9A73C; --accent2:#5FA98A;
+    --on-accent:#1B1712; --on-accent2:#12241C;
+    --danger:#E08069;
+    --shadow:0 18px 40px -24px rgba(0,0,0,0.55);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#241A1D; --bg-deep:#141110; --surface:#241F18;
+  --ink:#26221B; --ink-soft:#655A46; --ink-faint:#9A8E76;
+  --line:rgba(237,231,217,0.14);
+  --accent:#D9A73C; --accent2:#5FA98A;
+  --on-accent:#1B1712; --on-accent2:#12241C;
+  --danger:#E08069;
+  --shadow:0 18px 40px -24px rgba(0,0,0,0.55);
+}
+*{box-sizing:border-box;}
+html,body{margin:0;}
+body{
+  background-color:var(--bg);
+  min-height:100vh;
+  color:var(--ink);
+  font-family:'Archivo', ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+.bg-blur{
+  position:fixed;
+  inset:-30px;
+  background-size:cover;
+  background-position:center;
+  background-repeat:no-repeat;
+  filter:blur(32px);
+  transform:scale(1.15);
+  z-index:-2;
+}
+.bg-wash{
+  position:fixed;
+  inset:0;
+  background:rgba(255,251,248,0.6);
+  z-index:-1;
+}
+.page{ max-width:600px; margin:0 auto; padding:clamp(28px,7vw,48px) clamp(18px,5vw,28px) 56px; position:relative; }
+.portrait{ width:88px; height:88px; border-radius:50%; object-fit:cover; margin:0 auto 16px; border:2px solid var(--surface); box-shadow:var(--shadow); display:block; }
+.masthead{ display:flex; align-items:flex-start; gap:clamp(14px,4vw,24px); margin-bottom:clamp(32px,6vw,44px); }
+.masthead-left{ flex:1.25; min-width:0; display:flex; flex-direction:column; gap:11px; }
+.masthead-name{ font-family:'Fraunces', Georgia, serif; font-weight:500; font-style:italic; font-size:clamp(1.45rem,7vw,2.1rem); margin:0; letter-spacing:-0.01em; line-height:1.08; text-wrap:balance; }
+.masthead-tagline{ margin:0; color:var(--ink-soft); font-size:0.92rem; line-height:1.5; }
+.masthead-links{ display:flex; flex-direction:column; gap:8px; margin-top:2px; }
+.masthead-links .cta{ padding:11px 14px; font-size:0.82rem; }
+.masthead-right{ flex:1; max-width:40%; align-self:flex-start; }
+.masthead-right img{ width:100%; display:block; border-radius:8px; box-shadow:var(--shadow); aspect-ratio:3/4; object-fit:cover; background:var(--surface); }
+.gallery{ display:flex; flex-direction:row; gap:18px; overflow-x:auto; scroll-snap-type:x mandatory; -webkit-overflow-scrolling:touch; scrollbar-width:none; -ms-overflow-style:none; margin:0 calc(-1 * clamp(18px,5vw,28px)) clamp(36px,6vw,48px); padding:22px clamp(18px,5vw,28px) 10px; }
+.gallery::-webkit-scrollbar{ display:none; }
+.piece{ margin:0; flex:0 0 auto; width:70%; max-width:300px; scroll-snap-align:center; transform:rotate(var(--tilt, 0deg)); }
+.piece:nth-child(3n+1){ --tilt:-3deg; }
+.piece:nth-child(3n+2){ --tilt:2.5deg; }
+.piece:nth-child(3n){ --tilt:-1.5deg; }
+.piece img{ width:100%; aspect-ratio:4/5; object-fit:cover; display:block; border-radius:8px; box-shadow:var(--shadow); background:var(--surface); }
+.piece figcaption{ margin-top:10px; text-align:center; font-family:'Fraunces', serif; font-style:italic; color:var(--ink-soft); font-size:0.85rem; }
+.empty{ flex:1 1 auto; text-align:center; color:var(--ink-faint); font-style:italic; font-family:'Fraunces',serif; padding:40px 0; }
+.cta{ display:block; text-align:center; text-decoration:none; padding:15px 20px; border-radius:999px; font-weight:600; font-size:0.95rem; background:var(--accent); color:var(--on-accent); transition:transform 0.15s ease; }
+.cta:nth-child(even){ background:var(--accent2); color:var(--on-accent2); }
+.cta.cta-instagram{ background:linear-gradient(45deg, #405DE6 0%, #5851DB 15%, #833AB4 30%, #C13584 50%, #E1306C 65%, #FD1D1D 80%, #F77737 100%); color:#FFFFFF; }
+.cta.cta-facebook{ background:#1877F2; color:#FFFFFF; }
+.cta:hover{ transform:translateY(-1px); }
+.cta:focus-visible{ outline:2px solid var(--ink); outline-offset:2px; }
+.signoff{ text-align:center; color:var(--ink-faint); font-size:0.75rem; margin-top:32px; }
+.lock-btn{ position:fixed; right:16px; bottom:16px; width:38px; height:38px; border-radius:50%; background:var(--surface); border:1px solid var(--line); color:var(--ink-faint); display:flex; align-items:center; justify-content:center; cursor:pointer; opacity:0.55; transition:opacity 0.15s ease; z-index:5; }
+.lock-btn:hover, .lock-btn:focus-visible{ opacity:1; }
+.lock-btn svg{ width:16px; height:16px; }
+.modal-backdrop{ position:fixed; inset:0; background:rgba(20,17,12,0.5); display:flex; align-items:center; justify-content:center; padding:20px; z-index:20; }
+.modal{ background:var(--surface); border-radius:14px; padding:26px; max-width:340px; width:100%; box-shadow:var(--shadow); }
+.modal h2{ font-family:'Fraunces',serif; font-weight:500; margin:0 0 8px; font-size:1.3rem; }
+.modal p{ margin:0 0 16px; color:var(--ink-soft); font-size:0.9rem; line-height:1.5; }
+.modal input{ width:100%; margin-bottom:8px; }
+.modal-actions{ display:flex; justify-content:flex-end; gap:8px; margin-top:12px; }
+.field-error{ color:var(--danger); font-size:0.82rem; margin:4px 0 0; }
+input[type="text"], input[type="password"], textarea{ font-family:inherit; font-size:0.95rem; padding:11px 13px; border-radius:8px; border:1px solid var(--line); background:var(--bg); color:var(--ink); width:100%; }
+input:focus-visible, textarea:focus-visible, button:focus-visible{ outline:2px solid var(--accent2); outline-offset:1px; }
+button{ font-family:inherit; cursor:pointer; border:none; background:none; color:inherit; }
+.editing{ padding-bottom:40px; }
+.edit-bar{ position:sticky; top:0; z-index:10; display:flex; align-items:center; justify-content:space-between; background:var(--bg); padding:12px 0; margin-bottom:24px; border-bottom:1px solid var(--line); }
+.edit-label{ font-size:0.72rem; letter-spacing:0.12em; text-transform:uppercase; color:var(--ink-faint); font-weight:600; }
+.edit-bar-actions{ display:flex; gap:8px; }
+.primary{ background:var(--accent); color:var(--on-accent); padding:10px 18px; border-radius:999px; font-weight:600; font-size:0.88rem; }
+.primary:disabled{ opacity:0.6; }
+.ghost{ background:transparent; color:var(--ink-soft); padding:10px 14px; font-size:0.88rem; }
+.ghost.small, .add-tile.small{ font-size:0.82rem; }
+.edit-section{ margin-bottom:32px; }
+.section-title{ font-family:'Fraunces',serif; font-weight:500; font-size:1.1rem; margin:0 0 14px; }
+.photo-edit{ display:flex; align-items:center; gap:14px; margin-bottom:16px; }
+.portrait.placeholder{ display:flex; align-items:center; justify-content:center; color:var(--ink-faint); font-size:0.72rem; background:var(--surface); }
+.photo-edit-actions{ display:flex; flex-direction:column; gap:6px; align-items:flex-start; }
+.photo-edit-actions button{ background:var(--surface); border:1px solid var(--line); padding:8px 12px; border-radius:8px; font-size:0.82rem; color:var(--ink); }
+.bg-toggle{ display:flex; align-items:center; gap:8px; font-size:0.85rem; color:var(--ink-soft); margin-bottom:14px; cursor:pointer; }
+.bg-toggle input{ width:16px; height:16px; margin:0; }
+.color-row{ margin-bottom:18px; }
+.color-row:last-child{ margin-bottom:0; }
+.color-row-label{ display:block; font-size:0.78rem; letter-spacing:0.04em; text-transform:uppercase; color:var(--ink-faint); font-weight:600; margin-bottom:9px; }
+.swatches{ display:flex; flex-wrap:wrap; gap:9px; }
+.swatch{ width:28px; height:28px; border-radius:50%; border:2px solid transparent; padding:0; cursor:pointer; box-shadow:0 0 0 1px var(--line) inset; flex:none; }
+.swatch[aria-current="true"]{ border-color:var(--bg); box-shadow:0 0 0 1px var(--line) inset, 0 0 0 2px var(--ink); }
+.swatch-default{ background:var(--surface); background-image:linear-gradient(to top right, transparent calc(50% - 1.5px), var(--danger) calc(50% - 1.5px), var(--danger) calc(50% + 1.5px), transparent calc(50% + 1.5px)); }
+.name-input{ font-family:'Fraunces',serif; font-size:1.3rem; font-style:italic; text-align:center; margin-bottom:8px; }
+.tagline-input{ text-align:center; resize:vertical; min-height:44px; }
+.edit-pieces{ display:flex; flex-direction:column; gap:16px; margin-bottom:14px; }
+.edit-piece{ display:grid; grid-template-columns:84px 1fr auto; gap:12px; align-items:center; background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:10px; }
+.edit-piece img{ width:84px; height:84px; object-fit:cover; border-radius:6px; }
+.cap-input{ font-size:0.85rem; padding:8px 10px; }
+.piece-controls{ display:flex; flex-direction:column; gap:4px; }
+.piece-controls button{ width:28px; height:28px; border-radius:6px; background:var(--bg); border:1px solid var(--line); color:var(--ink-soft); font-size:0.9rem; display:flex; align-items:center; justify-content:center; }
+.piece-controls button:disabled{ opacity:0.3; cursor:default; }
+.piece-controls button.danger{ color:var(--danger); }
+.add-tile{ width:100%; padding:16px; border-radius:10px; border:1.5px dashed var(--line); background:transparent; color:var(--ink-soft); font-weight:600; font-size:0.9rem; }
+.add-tile:hover{ border-color:var(--accent2); color:var(--ink); }
+.edit-links{ display:flex; flex-direction:column; gap:10px; margin-bottom:12px; }
+.edit-link{ display:grid; grid-template-columns:1fr 1.3fr auto; gap:8px; align-items:center; }
+.edit-link input{ font-size:0.88rem; padding:9px 11px; }
+.edit-link button.danger{ width:32px; height:32px; border-radius:6px; background:var(--surface); border:1px solid var(--line); color:var(--danger); font-size:1rem; }
+.password-panel{ margin-top:12px; display:flex; flex-direction:column; gap:8px; max-width:280px; }
+.password-panel button{ background:var(--surface); border:1px solid var(--line); padding:9px 14px; border-radius:8px; font-size:0.85rem; align-self:flex-start; }
+@media (max-width:420px){ .edit-piece{ grid-template-columns:64px 1fr auto; } .edit-piece img{ width:64px; height:64px; } }
+@media (prefers-reduced-motion: reduce){ .cta{ transition:none; } }
+`;
+
+var LOCK_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg>';
+
+var TEXT_COLORS = [
+  { name: 'Charcoal', value: '#1A1A1A' },
+  { name: 'Ink', value: '#26221B' },
+  { name: 'Warm grey', value: '#655A46' },
+  { name: 'Cream', value: '#F2E9E4' },
+  { name: 'Ochre', value: '#C7962E' },
+  { name: 'Mustard', value: '#D4A017' },
+  { name: 'Rust', value: '#B5502A' },
+  { name: 'Dusty rose', value: '#C4667A' },
+  { name: 'Plum', value: '#5B3568' },
+  { name: 'Navy', value: '#2C3E70' },
+  { name: 'Teal', value: '#3B6E71' },
+  { name: 'Viridian', value: '#3E6B57' },
+  { name: 'Forest', value: '#2F5233' }
+];
+
+function renderColorRow(label, target, currentValue){
+  var swatches = '<button class="swatch swatch-default" data-action="set-text-color" data-target="' + target + '" data-color="" title="Default"' + (!currentValue ? ' aria-current="true"' : '') + '></button>';
+  swatches += TEXT_COLORS.map(function(c){
+    var active = currentValue === c.value;
+    return '<button class="swatch" style="background:' + c.value + '" data-action="set-text-color" data-target="' + target + '" data-color="' + c.value + '" title="' + esc(c.name) + '"' + (active ? ' aria-current="true"' : '') + '></button>';
+  }).join('');
+  return '<div class="color-row">' +
+    '<span class="color-row-label">' + esc(label) + '</span>' +
+    '<div class="swatches">' + swatches + '</div>' +
+  '</div>';
+}
+
+function esc(s){
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+  });
+}
+
+function uid(){ return 'id' + Date.now().toString(36) + Math.random().toString(36).slice(2,8); }
+
+function resolveHref(raw){
+  var v = (raw || '').trim();
+  if (!v) return null;
+  if (/^(https?:|mailto:|tel:)/i.test(v)) return v;
+  if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) return 'mailto:' + v;
+  return 'https://' + v.replace(/^\/+/, '');
+}
+
+function brandClassFor(label){
+  var l = (label || '').toLowerCase();
+  if (l.indexOf('instagram') !== -1) return ' cta-instagram';
+  if (l.indexOf('facebook') !== -1) return ' cta-facebook';
+  return '';
+}
+
+function sha256Hex(text){
+  var enc = new TextEncoder().encode(text);
+  return crypto.subtle.digest('SHA-256', enc).then(function(buf){
+    return Array.prototype.map.call(new Uint8Array(buf), function(b){ return b.toString(16).padStart(2,'0'); }).join('');
+  });
+}
+
+function resizeImage(file, maxDim, quality, cb){
+  var reader = new FileReader();
+  reader.onload = function(e){
+    var img = new Image();
+    img.onload = function(){
+      var scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+      var w = Math.max(1, Math.round(img.width * scale));
+      var h = Math.max(1, Math.round(img.height * scale));
+      var canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      cb(canvas.toDataURL('image/jpeg', quality));
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function headFor(site){
+  var title = (site.name && site.name !== 'Your Name') ? site.name + ' — Paintings' : 'Painter Landing Page';
+  return '<!doctype html>\n<html lang="en">\n<head>\n' +
+    '<meta charset="utf-8">\n' +
+    '<meta name="viewport" content="width=device-width, initial-scale=1">\n' +
+    '<title>' + esc(title) + '</title>\n' +
+    '<link rel="preconnect" href="https://fonts.googleapis.com">\n' +
+    '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..700;1,9..144,300..700&family=Archivo:wght@400;500;600;700&display=swap">\n' +
+    '</head>\n<body>\n<div id="app"></div>\n<script id="site-data" type="application/json">';
+}
+
+function buildHtml(site){
+  var json = JSON.stringify(site).replace(/</g, '\\u003c');
+  var closeData = '<' + '/script>\n<script>';
+  var closeApp = '<' + '/script>\n</body>\n</html>';
+  return headFor(site) + json + closeData + APP_SOURCE + closeApp;
+}
+
+function injectStyles(){
+  var s = document.createElement('style');
+  s.textContent = CSS_TEXT;
+  document.head.appendChild(s);
+}
+
+function renderLockModal(){
+  return '<div class="modal-backdrop" id="lock-backdrop">' +
+    '<div class="modal" role="dialog" aria-modal="true" aria-label="Enter edit password">' +
+      '<h2>Edit this page</h2>' +
+      '<p>Enter the password to add paintings, update your links, or change your photo.</p>' +
+      '<input type="password" id="lock-pass" placeholder="Password" autofocus>' +
+      '<p class="field-error" id="lock-error" hidden>That password isn’t right — try again.</p>' +
+      '<div class="modal-actions">' +
+        '<button class="ghost" data-action="close-lock">Cancel</button>' +
+        '<button class="primary" data-action="submit-lock">Unlock</button>' +
+      '</div>' +
+    '</div>' +
+  '</div>';
+}
+
+function renderPasswordPanel(){
+  return '<div class="password-panel">' +
+    '<input type="password" id="new-pass" placeholder="New password">' +
+    '<input type="password" id="new-pass-confirm" placeholder="Confirm new password">' +
+    '<button data-action="submit-password-change">Update password</button>' +
+    '<p class="field-error" id="pass-error" hidden></p>' +
+  '</div>';
+}
+
+function renderView(){
+  var links = SITE.links.map(function(l){
+    var href = resolveHref(l.url);
+    if (!href) return '';
+    return '<a class="cta' + brandClassFor(l.label) + '" href="' + esc(href) + '" target="_blank" rel="noopener noreferrer">' + esc(l.label || 'Link') + '</a>';
+  }).join('');
+
+  var captionStyle = SITE.captionColor ? ' style="color:' + esc(SITE.captionColor) + '"' : '';
+  var pieces = SITE.paintings.length ? SITE.paintings.map(function(p){
+    return '<figure class="piece">' +
+      '<img src="' + p.src + '" alt="' + esc(p.caption || ((SITE.name || 'Artist') + '’s painting')) + '" loading="lazy">' +
+      (p.caption ? '<figcaption' + captionStyle + '>' + esc(p.caption) + '</figcaption>' : '') +
+      '</figure>';
+  }).join('') : '<p class="empty">More paintings coming soon.</p>';
+
+  var featuredSrc = featuredImageSrc();
+  var nameStyle = SITE.nameColor ? ' style="color:' + esc(SITE.nameColor) + '"' : '';
+  var taglineStyle = SITE.taglineColor ? ' style="color:' + esc(SITE.taglineColor) + '"' : '';
+
+  return '<div class="page">' +
+    '<header class="masthead">' +
+      '<div class="masthead-left">' +
+        '<h1 class="masthead-name"' + nameStyle + '>' + esc(SITE.name || 'Untitled') + '</h1>' +
+        (SITE.tagline ? '<p class="masthead-tagline"' + taglineStyle + '>' + esc(SITE.tagline) + '</p>' : '') +
+        (links ? '<div class="masthead-links">' + links + '</div>' : '') +
+      '</div>' +
+      (featuredSrc ? '<div class="masthead-right"><img src="' + featuredSrc + '" alt="' + esc(SITE.name || '') + '"></div>' : '') +
+    '</header>' +
+    '<main class="gallery">' + pieces + '</main>' +
+    (SITE.name ? '<p class="signoff">© ' + new Date().getFullYear() + ' ' + esc(SITE.name) + '</p>' : '') +
+    '<button class="lock-btn" data-action="open-lock" aria-label="Edit this page" title="Edit this page">' + LOCK_ICON + '</button>' +
+  '</div>' + (lockOpen ? renderLockModal() : '');
+}
+
+function renderEditing(){
+  var paintingsHtml = SITE.paintings.map(function(p, i){
+    return '<div class="edit-piece">' +
+      '<img src="' + p.src + '" alt="">' +
+      '<input class="cap-input" type="text" placeholder="Caption (optional)" value="' + esc(p.caption || '') + '" data-bind="painting-caption" data-id="' + p.id + '">' +
+      '<div class="piece-controls">' +
+        '<button data-action="move-painting" data-dir="-1" data-id="' + p.id + '"' + (i === 0 ? ' disabled' : '') + ' aria-label="Move earlier">↑</button>' +
+        '<button data-action="move-painting" data-dir="1" data-id="' + p.id + '"' + (i === SITE.paintings.length - 1 ? ' disabled' : '') + ' aria-label="Move later">↓</button>' +
+        '<button class="danger" data-action="remove-painting" data-id="' + p.id + '" aria-label="Remove painting">×</button>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+
+  var linksHtml = SITE.links.map(function(l){
+    return '<div class="edit-link">' +
+      '<input type="text" placeholder="Label, e.g. Instagram" value="' + esc(l.label || '') + '" data-bind="link-label" data-id="' + l.id + '">' +
+      '<input type="text" placeholder="Link or email address" value="' + esc(l.url || '') + '" data-bind="link-url" data-id="' + l.id + '">' +
+      '<button class="danger" data-action="remove-link" data-id="' + l.id + '" aria-label="Remove link">×</button>' +
+    '</div>';
+  }).join('');
+
+  return '<div class="page editing">' +
+    '<div class="edit-bar">' +
+      '<span class="edit-label">Editing</span>' +
+      '<div class="edit-bar-actions">' +
+        '<button class="ghost" data-action="exit-edit">Exit without saving</button>' +
+        '<button class="primary" id="save-btn" data-action="save">Save changes</button>' +
+      '</div>' +
+    '</div>' +
+
+    '<section class="edit-section">' +
+      '<div class="photo-edit">' +
+        (SITE.photo ? '<img class="portrait" src="' + SITE.photo + '">' : '<div class="portrait placeholder">Photo</div>') +
+        '<div class="photo-edit-actions">' +
+          '<button data-action="change-photo">' + (SITE.photo ? 'Change photo' : 'Add a photo') + '</button>' +
+          (SITE.photo ? '<button class="ghost" data-action="remove-photo">Remove</button>' : '') +
+        '</div>' +
+      '</div>' +
+      '<label class="bg-toggle"><input type="checkbox" id="blur-bg-toggle"' + (SITE.blurBg !== false ? ' checked' : '') + '> Use this photo as a soft, blurred background</label>' +
+      '<input class="name-input" type="text" placeholder="Your name" value="' + esc(SITE.name || '') + '" data-bind="name">' +
+      '<textarea class="tagline-input" placeholder="A line about your work" data-bind="tagline">' + esc(SITE.tagline || '') + '</textarea>' +
+    '</section>' +
+
+    '<section class="edit-section">' +
+      '<h2 class="section-title">Text colours</h2>' +
+      renderColorRow('Name', 'name', SITE.nameColor) +
+      renderColorRow('Tagline', 'tagline', SITE.taglineColor) +
+      renderColorRow('Captions', 'caption', SITE.captionColor) +
+    '</section>' +
+
+    '<section class="edit-section">' +
+      '<h2 class="section-title">Paintings</h2>' +
+      '<div class="edit-pieces">' + paintingsHtml + '</div>' +
+      '<button class="add-tile" data-action="add-painting">+ Add painting</button>' +
+    '</section>' +
+
+    '<section class="edit-section">' +
+      '<h2 class="section-title">Links</h2>' +
+      '<div class="edit-links">' + linksHtml + '</div>' +
+      '<button class="add-tile small" data-action="add-link">+ Add link</button>' +
+    '</section>' +
+
+    '<section class="edit-section">' +
+      '<button class="ghost small" data-action="toggle-password-panel">Change password</button>' +
+      (passwordPanelOpen ? renderPasswordPanel() : '') +
+    '</section>' +
+
+    '<input type="file" id="painting-file" accept="image/*" hidden>' +
+    '<input type="file" id="photo-file" accept="image/*" hidden>' +
+  '</div>';
+}
+
+function featuredImageSrc(){
+  return SITE.photo || (SITE.paintings.length ? SITE.paintings[0].src : null);
+}
+
+function render(){
+  var src = featuredImageSrc();
+  var blurBg = SITE.blurBg !== false;
+  var bgLayer = (blurBg && src)
+    ? ('<div class="bg-blur" style="background-image:url(\'' + src + '\')"></div><div class="bg-wash"></div>')
+    : '';
+  app.innerHTML = bgLayer + (editing ? renderEditing() : renderView());
+}
+
+function focusSoon(id){
+  setTimeout(function(){ var el = document.getElementById(id); if (el) el.focus(); }, 0);
+}
+
+function trySubmitLock(){
+  var input = document.getElementById('lock-pass');
+  if (!input) return;
+  sha256Hex(input.value).then(function(hash){
+    if (hash === SITE.passwordHash) {
+      lockOpen = false; editing = true; unlocked = true;
+      originalSiteJson = JSON.stringify(SITE);
+      render();
+    } else {
+      var err = document.getElementById('lock-error');
+      if (err) err.hidden = false;
+      input.value = '';
+      input.focus();
+    }
+  });
+}
+
+function submitPasswordChange(){
+  var p1 = document.getElementById('new-pass').value;
+  var p2 = document.getElementById('new-pass-confirm').value;
+  var err = document.getElementById('pass-error');
+  if (p1.length < 4) { err.textContent = 'Use at least 4 characters.'; err.hidden = false; return; }
+  if (p1 !== p2) { err.textContent = 'Passwords don’t match.'; err.hidden = false; return; }
+  sha256Hex(p1).then(function(hash){
+    SITE.passwordHash = hash;
+    dirty = true; passwordPanelOpen = false;
+    render();
+  });
+}
+
+async function save(){
+  var btn = document.getElementById('save-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
+  try {
+    var cap = (window.claude && window.claude.use) ? await window.claude.use('artifact') : null;
+    if (!cap) {
+      alert('Saving isn’t available in this view. Open this page from the artifact link it was published to, then try again.');
+      if (btn) { btn.disabled = false; btn.textContent = 'Save changes'; }
+      return;
+    }
+    var html = buildHtml(SITE);
+    await cap.publish(html);
+  } catch (err) {
+    var msg = 'Couldn’t save just now — try again in a moment.';
+    if (err && (err.code === 'not_writer' || err.code === 'not_granted')) {
+      msg = 'This link doesn’t have permission to save changes here.';
+    } else if (err && err.code === 'too_large') {
+      msg = 'That’s too much to save at once — try removing a painting or a large photo.';
+    } else if (err && err.code === 'conflict') {
+      msg = null;
+    }
+    if (msg) alert(msg);
+    if (btn) { btn.disabled = false; btn.textContent = 'Save changes'; }
+  }
+}
+
+function onClick(e){
+  var backdrop = document.getElementById('lock-backdrop');
+  if (backdrop && e.target === backdrop) { lockOpen = false; render(); return; }
+
+  var el = e.target.closest('[data-action]');
+  if (!el) return;
+  var action = el.dataset.action;
+  var id = el.dataset.id;
+
+  if (action === 'open-lock') { lockOpen = true; render(); focusSoon('lock-pass'); }
+  else if (action === 'close-lock') { lockOpen = false; render(); }
+  else if (action === 'submit-lock') { trySubmitLock(); }
+  else if (action === 'exit-edit') {
+    if (!dirty || confirm('Discard changes made in this session?')) {
+      SITE = JSON.parse(originalSiteJson);
+      editing = false; unlocked = false; dirty = false; passwordPanelOpen = false;
+      render();
+    }
+  }
+  else if (action === 'save') { save(); }
+  else if (action === 'add-painting') { document.getElementById('painting-file').click(); }
+  else if (action === 'change-photo') { document.getElementById('photo-file').click(); }
+  else if (action === 'remove-photo') { SITE.photo = null; dirty = true; render(); }
+  else if (action === 'remove-painting') { SITE.paintings = SITE.paintings.filter(function(p){ return p.id !== id; }); dirty = true; render(); }
+  else if (action === 'move-painting') {
+    var dir = parseInt(el.dataset.dir, 10);
+    var idx = SITE.paintings.findIndex(function(p){ return p.id === id; });
+    var swapWith = idx + dir;
+    if (idx > -1 && swapWith >= 0 && swapWith < SITE.paintings.length) {
+      var tmp = SITE.paintings[idx];
+      SITE.paintings[idx] = SITE.paintings[swapWith];
+      SITE.paintings[swapWith] = tmp;
+      dirty = true; render();
+    }
+  }
+  else if (action === 'add-link') { SITE.links.push({ id: uid(), label: '', url: '' }); dirty = true; render(); }
+  else if (action === 'remove-link') { SITE.links = SITE.links.filter(function(l){ return l.id !== id; }); dirty = true; render(); }
+  else if (action === 'toggle-password-panel') { passwordPanelOpen = !passwordPanelOpen; render(); }
+  else if (action === 'submit-password-change') { submitPasswordChange(); }
+  else if (action === 'set-text-color') {
+    var color = el.dataset.color || null;
+    if (el.dataset.target === 'name') SITE.nameColor = color;
+    else if (el.dataset.target === 'tagline') SITE.taglineColor = color;
+    else if (el.dataset.target === 'caption') SITE.captionColor = color;
+    dirty = true; render();
+  }
+}
+
+function onInput(e){
+  var el = e.target;
+  var bind = el.dataset.bind;
+  if (!bind) return;
+  if (bind === 'name') { SITE.name = el.value; }
+  else if (bind === 'tagline') { SITE.tagline = el.value; }
+  else if (bind === 'painting-caption') {
+    var p = SITE.paintings.find(function(x){ return x.id === el.dataset.id; });
+    if (p) p.caption = el.value;
+  }
+  else if (bind === 'link-label') {
+    var l = SITE.links.find(function(x){ return x.id === el.dataset.id; });
+    if (l) l.label = el.value;
+  }
+  else if (bind === 'link-url') {
+    var l2 = SITE.links.find(function(x){ return x.id === el.dataset.id; });
+    if (l2) l2.url = el.value;
+  }
+  dirty = true;
+}
+
+function onChange(e){
+  var el = e.target;
+  if (el.id === 'painting-file' && el.files[0]) {
+    resizeImage(el.files[0], 1600, 0.72, function(dataUrl){
+      SITE.paintings.push({ id: uid(), src: dataUrl, caption: '' });
+      dirty = true; render();
+    });
+  } else if (el.id === 'photo-file' && el.files[0]) {
+    resizeImage(el.files[0], 500, 0.8, function(dataUrl){
+      SITE.photo = dataUrl;
+      dirty = true; render();
+    });
+  } else if (el.id === 'blur-bg-toggle') {
+    SITE.blurBg = el.checked;
+    dirty = true; render();
+  }
+}
+
+var app = document.getElementById('app');
+var SITE = JSON.parse(document.getElementById('site-data').textContent);
+var editing = false, unlocked = false, dirty = false, lockOpen = false, passwordPanelOpen = false;
+var originalSiteJson = JSON.stringify(SITE);
+
+injectStyles();
+render();
+app.addEventListener('click', onClick);
+app.addEventListener('input', onInput);
+app.addEventListener('change', onChange);
+document.addEventListener('keydown', function(e){
+  if (e.key === 'Enter' && e.target && e.target.id === 'lock-pass') { trySubmitLock(); }
+  if (e.key === 'Escape' && lockOpen) { lockOpen = false; render(); }
+});
+</script>
+</body>
+</html>
