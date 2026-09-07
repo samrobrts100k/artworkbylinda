@@ -464,8 +464,8 @@ async function save(){
     }
     dirty = false;
     originalSiteJson = JSON.stringify(SITE);
+    editing = false;
     showToast('Saved! It may take a minute to go live for other visitors.');
-    if (btn) { btn.disabled = false; btn.textContent = 'Save changes'; }
   } catch (err) {
     showToast('Couldn’t reach the server — check your connection and try again.');
     if (btn) { btn.disabled = false; btn.textContent = 'Save changes'; }
