@@ -77,7 +77,6 @@ body{
 .portrait{ width:88px; height:88px; border-radius:50%; object-fit:cover; margin:0 auto 16px; border:2px solid var(--surface); box-shadow:var(--shadow); display:block; }
 .masthead{ display:flex; align-items:flex-start; gap:clamp(14px,4vw,24px); margin-bottom:clamp(32px,6vw,44px); }
 .masthead-left{ flex:1.25; min-width:0; display:flex; flex-direction:column; gap:11px; }
-.masthead-textpanel{ background:var(--panel-bg); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); border-radius:14px; padding:12px 16px; display:flex; flex-direction:column; gap:8px; }
 .masthead-name{ font-family:'Fraunces', Georgia, serif; font-weight:500; font-style:italic; font-size:clamp(1.45rem,7vw,2.1rem); margin:0; letter-spacing:-0.01em; line-height:1.08; text-wrap:balance; }
 .masthead-tagline{ margin:0; color:var(--ink-soft); font-size:0.92rem; line-height:1.5; }
 .masthead-links{ display:flex; flex-direction:column; gap:8px; margin-top:2px; }
@@ -312,10 +311,8 @@ function renderView(){
   return '<div class="page">' +
     '<header class="masthead">' +
       '<div class="masthead-left">' +
-        '<div class="masthead-textpanel">' +
-          '<h1 class="masthead-name"' + nameStyle + '>' + esc(SITE.name || 'Untitled') + '</h1>' +
-          (SITE.tagline ? '<p class="masthead-tagline"' + taglineStyle + '>' + esc(SITE.tagline) + '</p>' : '') +
-        '</div>' +
+        '<h1 class="masthead-name"' + nameStyle + '>' + esc(SITE.name || 'Untitled') + '</h1>' +
+        (SITE.tagline ? '<p class="masthead-tagline"' + taglineStyle + '>' + esc(SITE.tagline) + '</p>' : '') +
         (links ? '<div class="masthead-links">' + links + '</div>' : '') +
       '</div>' +
       (featuredSrc ? '<div class="masthead-right"><img src="' + featuredSrc + '" alt="' + esc(SITE.name || '') + '"></div>' : '') +
